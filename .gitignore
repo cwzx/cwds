@@ -1,0 +1,16 @@
+bin/
+benchmark/output/*
+!benchmark/output/dummy.txt
+
+include/cw/multivec.h
+
+# Visual Studio stuff
+*.suo
+*.sdf
+*.opensdf
+*.psess
+*.vsp
+build/*/cwlist/x64
+build/*/cwlist/Win32
+build/*/benchmark/x64
+build/*/benchmark/Win32
