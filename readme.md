@@ -5,10 +5,24 @@ A non-standard linked list implementation using contiguous arrays.
 
 The list has the same interface as `std::list` and can be used as a drop-in replacement (up to a few caveats).
 
-The source code is in [`include/cw/list.h`](tree/master/include/cw/list.h).
+The source code is in [`include/cw/list.h`](/blob/master/include/cw/list.h).
 
 Usage
 -----
+
+```cpp
+#include <iostream>
+#include <cw/list.h>
+
+using namespace std;
+
+int main() {
+    cw::list<double> values = { 1.0, -3.2, 1.0e-3 };
+	values.push_front( 30.0 );
+	for( auto x : values )
+		cout << x << endl;
+}
+```
 
 The list takes two template type arguments:
 

@@ -178,6 +178,10 @@ struct list : list_types_base<T,U> {
 	
 	list() = default;
 
+	list( const std::initializer_list<value_type>& rhs ) : values(rhs) {
+		set_default_nodes( values.size() );
+	}
+
 	explicit list( const std::vector<value_type>& rhs ) : values(rhs) {
 		set_default_nodes( values.size() );
 	}
@@ -195,7 +199,7 @@ struct list : list_types_base<T,U> {
 	list_type& operator=( const std::vector<value_type>& rhs ) {
 		size_type N = rhs.size();
 		if( N > size_type(terminator) ) {
-			throw std::exception("cw::list::operator=( const vector<value_type>& ) -- size too big for index_type");
+			throw std::exception("cw::list assignment -- vector too big for index_type");
 		}
 		values = rhs;
 		set_default_nodes( N );
@@ -205,9 +209,19 @@ struct list : list_types_base<T,U> {
 	list_type& operator=( std::vector<value_type>&& rhs ) {
 		size_type N = rhs.size();
 		if( N > size_type(terminator) ) {
-			throw std::exception("cw::list::operator=( vector<value_type>&& ) -- size too big for index_type");
+			throw std::exception("cw::list assignment -- vector too big for index_type");
 		}
 		values = std::move(rhs);
+		set_default_nodes( N );
+		return *this;
+	}
+
+	list_type& operator=( const std::initializer_list<value_type>& rhs ) {
+		size_type N = rhs.size();
+		if( N > size_type(terminator) ) {
+			throw std::exception("cw::list assignment -- initializer_list too big for index_type");
+		}
+		values = rhs;
 		set_default_nodes( N );
 		return *this;
 	}
@@ -606,7 +620,7 @@ protected:
 		nodes[0].prev = terminator;
 		nodes[0].next = 1;
 		head = 0;
-		tail = N-1;
+		tail = index_type(N-1);
 		if( N == 1 ) return;
 		for(size_type i=1;i<N;++i) {
 			nodes[i].prev = index_type(i-1);
