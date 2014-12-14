@@ -5,7 +5,7 @@ A non-standard linked list implementation using contiguous arrays.
 
 The list is fully-featured with the same interface as `std::list` and can be used as a drop-in replacement (up to a few caveats, see below).
 
-The source code is in [`include/cw/list.h`](/blob/master/include/cw/list.h).
+The source code is in [`include/cw/list.h`](/include/cw/list.h).
 
 Usage
 -----
