@@ -3,7 +3,7 @@ Data Structures
 
 A non-standard linked list implementation using contiguous arrays.
 
-The list has the same interface as `std::list` and can be used as a drop-in replacement (up to a few caveats).
+The list is fully-featured with the same interface as `std::list` and can be used as a drop-in replacement (up to a few caveats, see below).
 
 The source code is in [`include/cw/list.h`](/blob/master/include/cw/list.h).
 
@@ -27,11 +27,11 @@ int main() {
 The list takes two template type arguments:
 
 * The value type -- the type of the elements you wish to store in the data structure.
-* The index type -- an unsigned integer large enough to index all the elements.
+* The index type -- an unsigned integer type large enough to index all the elements.
 
 The choice of index type limits the maximum size of the list.
 
-The default index type is `uint16_t` giving a max size of 65535.
+The default index type is `uint16_t`, giving a max size of 65535.
 
 The following convenience typedefs are provided:
 
@@ -49,6 +49,14 @@ template<typename T>
 using list64 = list<T,uint64_t>;
 ```
 
+Interface Differences
+---------------------
+
+* There is no custom allocator support (yet).
+* `.erase()` invalidates iterators to the erased element and the element stored at the back of the underlying vector.
+* `.merge()` does allocation and move.
+* `.splice()` does allocation and move.
+* `.swap()` invalidates all iterators.
 
 Benchmark
 ---------

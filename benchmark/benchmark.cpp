@@ -105,6 +105,22 @@ struct fill_mid {
 	}
 };
 
+// Random -- random values inserted at the back.
+
+struct fill_back_random {
+	mt19937 mt;
+	template<typename L>
+	void operator()( L& v, size_t N ) {
+		using T = L::value_type;
+		uint32_t upper = (uint32_t)min<uint64_t>( numeric_limits<uint32_t>::max(), numeric_limits<T>::max() );
+		uniform_int_distribution<uint32_t> dist( 0, upper );
+		for(size_t i=0;i<N;++i) {
+			auto r = dist(mt);
+			v.emplace_back( r );
+		}
+	}
+};
+
 // Random Sorted -- insert random values, keeping list sorted.
 
 struct fill_random_sorted {
@@ -749,7 +765,7 @@ int main3() {
 }
 
 int main() {
-	main1();
-	//main2();
+	//main1();
+	main2();
 	//main3();
 }

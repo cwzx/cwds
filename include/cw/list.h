@@ -29,7 +29,7 @@ struct list_types_base {
 	using difference_type        = std::ptrdiff_t;
 };
 
-template<typename T,typename U,bool c>
+template<typename T,typename U,bool is_const>
 struct list_iterator_types;
 
 template<typename T,typename U>
@@ -52,16 +52,16 @@ struct list_iterator_types<T,U,true> : list_types_base<T,U> {
 	using list_type              = const list<T,U>;
 };
 
-template<typename T,typename U,bool c>
-struct list_iterator_base : list_iterator_types<T,U,c> {
-	using base_type = list_iterator_base<T,U,c>;
+template<typename T,typename U,bool is_const>
+struct list_iterator_base : list_iterator_types<T,U,is_const> {
+	using base_type = list_iterator_base<T,U,is_const>;
 
-	using typename list_iterator_types<T,U,c>::value_type;
-	using typename list_iterator_types<T,U,c>::index_type;
-	using typename list_iterator_types<T,U,c>::reference;
-	using typename list_iterator_types<T,U,c>::pointer;
-	using typename list_iterator_types<T,U,c>::iterator;
-	using typename list_iterator_types<T,U,c>::list_type;
+	using typename list_iterator_types<T,U,is_const>::value_type;
+	using typename list_iterator_types<T,U,is_const>::index_type;
+	using typename list_iterator_types<T,U,is_const>::reference;
+	using typename list_iterator_types<T,U,is_const>::pointer;
+	using typename list_iterator_types<T,U,is_const>::iterator;
+	using typename list_iterator_types<T,U,is_const>::list_type;
 
 	list_iterator_base() = default;
 
@@ -198,7 +198,7 @@ struct list : list_types_base<T,U> {
 
 	list_type& operator=( const std::vector<value_type>& rhs ) {
 		size_type N = rhs.size();
-		if( N > size_type(terminator) ) {
+		if( N > max_size() ) {
 			throw std::exception("cw::list assignment -- vector too big for index_type");
 		}
 		values = rhs;
@@ -208,7 +208,7 @@ struct list : list_types_base<T,U> {
 
 	list_type& operator=( std::vector<value_type>&& rhs ) {
 		size_type N = rhs.size();
-		if( N > size_type(terminator) ) {
+		if( N > max_size() ) {
 			throw std::exception("cw::list assignment -- vector too big for index_type");
 		}
 		values = std::move(rhs);
@@ -218,12 +218,31 @@ struct list : list_types_base<T,U> {
 
 	list_type& operator=( const std::initializer_list<value_type>& rhs ) {
 		size_type N = rhs.size();
-		if( N > size_type(terminator) ) {
+		if( N > max_size() ) {
 			throw std::exception("cw::list assignment -- initializer_list too big for index_type");
 		}
 		values = rhs;
 		set_default_nodes( N );
 		return *this;
+	}
+
+	void assign( size_type count, const T& value ) {
+		clear();
+		values.assign(count,value);
+		set_default_nodes( count );
+	}
+
+	template<typename InputIt>
+	void assign( InputIt first, InputIt last ) {
+		clear();
+		values.assign( first, last );
+		set_default_nodes( std::distance(first,last) );
+	}
+
+	void assign( const std::initializer_list<T>& rhs ) {
+		clear();
+		values.assign( rhs );
+		set_default_nodes( rhs.size() );
 	}
 
 	// Element Access
@@ -265,27 +284,26 @@ struct list : list_types_base<T,U> {
 	}
 
 	iterator insert( const_iterator pos, const value_type& x ) {
-		if( pos.p != this ) return iterator(pos);
-		return insert_index( pos.index, x );
+		values.push_back(x);
+		return insert_index_node( pos.index );
 	}
 
 	iterator insert( const_iterator pos, value_type&& x ) {
-		if( pos.p != this ) return iterator(pos);
-		return insert_index( pos.index, std::move(x) );
+		values.push_back( std::move(x) );
+		return insert_index_node( pos.index );
 	}
 
 	template<typename... Ts>
 	iterator emplace( const_iterator pos, Ts&&... xs ) {
-
+		values.emplace_back( std::forward<Ts>(xs)... );
+		insert_index_node( pos.index );
 	}
 
 	iterator erase( const_iterator pos ) {
-		if( pos.p != this ) return iterator(pos);
 		return erase_index(pos.index);
 	}
 
 	iterator erase( const_iterator first, const_iterator last ) {
-		if( first.p != this || last.p != this ) return;
 		iterator it = first;
 		while( it != last ) {
 			it = erase_index( it.index );
@@ -342,41 +360,14 @@ struct list : list_types_base<T,U> {
 	}
 
 	void resize( size_type N ) {
-		if( N > size_type(terminator) ) {
+		if( N > max_size() ) {
 			throw std::exception("cw::list::resize() -- size too big for index_type");
 		}
 		size_type current_size = size();
-		 if( N > current_size ) {
-			values.resize(N);
-			nodes.resize(N);
-
-			// modify previous tail and add first new node
-			if( tail == terminator ) {
-				head = 0;
-				nodes[0].prev = terminator;
-				nodes[0].next = 1;
-			} else {
-				nodes[tail].next = index_type(current_size);
-				nodes[current_size].prev = tail;
-				if( N > current_size + 1 ) {
-					nodes[current_size].next = current_size + 1;
-				} else {
-					nodes[current_size].next = terminator;
-				}
-			}
-
-			// add more new nodes
-			for( size_type i = current_size + 1; i < N-1; ++i ) {
-				nodes[i].prev = index_type(i - 1);
-				nodes[i].next = index_type(i + 1);
-			}
-
-			// add the last node and update the tail
-			if( N > current_size + 1 ) {
-				tail = index_type(N - 1);
-				nodes[tail].prev = tail - 1;
-				nodes[tail].next = terminator;
-			}
+		if( N > current_size ) {
+			values.resize( N );
+			nodes.resize( N );
+			resize_nodes( N );
 		} else {
 			while( current_size > N ) {
 				pop_back();
@@ -386,47 +377,27 @@ struct list : list_types_base<T,U> {
 	}
 
 	void resize( size_type N, const value_type& x ) {
-		if( N > size_type(terminator) ) {
+		if( N > max_size() ) {
 			throw std::exception("cw::list::resize() -- size too big for index_type");
 		}
 		size_type current_size = size();
-		 if( N > current_size ) {
-			values.resize(N,x);
-			nodes.resize(N);
-
-			// modify previous tail and add first new node
-			if( tail == terminator ) {
-				head = 0;
-				nodes[0].prev = terminator;
-				nodes[0].next = 1;
-			} else {
-				nodes[tail].next = index_type(current_size);
-				nodes[current_size].prev = tail;
-				if( N > current_size + 1 ) {
-					nodes[current_size].next = current_size + 1;
-				} else {
-					nodes[current_size].next = terminator;
-				}
-			}
-
-			// add more new nodes
-			for( size_type i = current_size + 1; i < N-1; ++i ) {
-				nodes[i].prev = index_type(i - 1);
-				nodes[i].next = index_type(i + 1);
-			}
-
-			// add the last node and update the tail
-			if( N > current_size + 1 ) {
-				tail = index_type(N - 1);
-				nodes[tail].prev = tail - 1;
-				nodes[tail].next = terminator;
-			}
+		if( N > current_size ) {
+			values.resize( N, x );
+			nodes.resize( N );
+			resize_nodes( N );
 		} else {
 			while( current_size > N ) {
 				pop_back();
 				--current_size;
 			}
 		}
+	}
+
+	void swap( list& rhs ) {
+		values.swap( rhs );
+		nodes.swap( rhs );
+		std::swap( head, rhs.head );
+		std::swap( tail, rhs.tail );
 	}
 
 	// Iterators
@@ -483,41 +454,41 @@ struct list : list_types_base<T,U> {
 
 	template<typename Comp>
 	void merge( list_type& rhs, Comp comp ) {		
-		
+		merge( std::move(rhs), comp );
+
+		// rhs is now empty
+		rhs.clear();
 	}
 
 	template<typename Comp>
 	void merge( list_type&& rhs, Comp comp ) {
-		size_type leftN = size();
-		size_type rightN = rhs.size();
-		size_type sumN = leftN + rightN;
+		size_type left_size = size();
+		size_type right_size = rhs.size();
+		size_type sum_size = left_size + right_size;
 
-		values.reserve( sumN );
-		nodes.reserve( sumN );
+		values.reserve( sum_size );
+		std::move( std::begin(rhs.values), std::end(rhs.values), std::back_inserter(values) );
 
-		std::move( std::begin(rhs.values), std::end(rhs.values), std::end(values) );
-		
-		//std::move( std::begin(rhs.nodes), std::end(rhs.nodes), std::end(nodes) );
-		memcpy( &nodes[leftN], &rhs.nodes[0], rightN * sizeof(node) );
+		nodes.resize( sum_size );
+		memcpy( &nodes[left_size], &rhs.nodes[0], right_size * sizeof(node) );
 
 		// connect the two lists
-		nodes[ tail ].next = rhs.head + leftN;
-		nodes[ leftN ].prev = tail;
+		index_type right_head = rhs.head + left_size;
+		nodes[ tail ].next = right_head;
+		nodes[ right_head ].prev = tail;
 
 		// offset the new indexes
-		for(index_type i=leftN;i<sumN;++i) {
-			nodes[ i ] += leftN;
+		for(index_type i=left_size;i<sum_size;++i) {
+			nodes[ i ] += left_size;
 		}
 
 		// update the tail
-		index_type old_tail = tail;
-		tail = rhs.tail + leftN;
-
-		// rhs is now empty
-		rhs.clear();
+		index_type right_tail = rhs.tail + left_size;
+		tail = right_tail;
+		nodes[ right_tail ].next = terminator;
 
 		// merge the two parts
-		merge_index( head, next_index(old_tail), tail, comp );
+		merge_index( head, right_head, tail, comp );
 	}
 
 	void merge( list_type& rhs ) {
@@ -525,7 +496,7 @@ struct list : list_types_base<T,U> {
 	}
 
 	void merge( list_type&& rhs ) {
-		merge( rhs, less<>() );
+		merge( std::move(rhs), less<>() );
 	}
 
 	void remove( const T& value ) {
@@ -556,22 +527,66 @@ struct list : list_types_base<T,U> {
 		std::swap( head, tail );
 	}
 
-	void splice( const_iterator pos, list_type& other ) {
+	void splice( const_iterator pos, list_type& rhs ) {
+		splice( pos, std::move(rhs) );
+		rhs.clear();
 	}
 
-	void splice( const_iterator pos, list_type&& other ) {
+	void splice( const_iterator pos, list_type&& rhs ) {
+		size_type left_size = size();
+		size_type right_size = rhs.size();
+		size_type sum_size = left_size + right_size;
+
+		values.reserve( sum_size );
+		std::move( std::begin(rhs.values), std::end(rhs.values), std::back_inserter(values) );
+
+		nodes.resize( sum_size );
+		memcpy( &nodes[left_size], &rhs.nodes[0], right_size * sizeof(node) );
+
+		index_type right_head = rhs.head + left_size;
+		index_type right_tail = rhs.tail + left_size;
+
+		splice_index( pos.index, left_size, sum_size, right_head, right_tail );
 	}
 
-	void splice( const_iterator pos, list_type& other, const_iterator it ) {
+	void splice( const_iterator pos, list_type& rhs, const_iterator it ) {
+		splice( pos, std::move(rhs), it );
+		rhs.erase( it );
 	}
 
-	void splice( const_iterator pos, list_type&& other, const_iterator it ) {
+	void splice( const_iterator pos, list_type&& rhs, const_iterator it ) {
+		size_type left_size = size();
+
+		values.emplace_back( std::move(*it) );
+		
+		index_type prev_index = prev_index(pos.index);
+		nodes.push_back( { prev_index, pos.index } );
+
+		if( prev_pos == terminator ) {
+			head = left_size;
+		} else {
+			nodes[ prev_pos ].next = left_size;
+		}
+
+		if( pos.index == terminator ) {
+			tail = left_size;
+		} else {
+			nodes[ pos.index ].prev = left_size;
+		}
 	}
 
-	void splice( const_iterator pos, list_type& other, const_iterator first, const_iterator last) {
+	void splice( const_iterator pos, list_type& rhs, const_iterator first, const_iterator last) {
+		splice( pos, std::move(rhs), first, last );
+		rhs.erase( first, last );
 	}
 
-	void splice( const_iterator pos, list_type&& other, const_iterator first, const_iterator last ) {
+	void splice( const_iterator pos, list_type&&, const_iterator first, const_iterator last ) {
+		size_type left_size = size();
+		size_type right_size = std::distance( first, last ) + 1;
+		size_type sum_size = left_size + right_size;
+
+		reserve( sum_size );
+		std::move( first, last, std::back_inserter(*this) );
 	}
 
 	// Delete repeated values
@@ -592,18 +607,13 @@ struct list : list_types_base<T,U> {
 		unique( equal_to<>() );
 	}
 
-	
-
 	template<typename Comp>
 	void sort( Comp comp ) {
 		size_type N = nodes.size();
 		if( N < 2 ) return;
-#if 0
 		merge_sort(head,tail,N,comp);
-#else
-		insertion_sort(head,tail,comp);
-#endif
-
+		//insertion_sort(head,tail,comp);
+		//selection_sort(head,tail,comp);
 	}
 
 	void sort() {
@@ -671,7 +681,7 @@ protected:
 		return nodes[ get_value_index(val) ];
 	}
 
-	index_type get_position_index( index_type n ) const {
+	index_type get_pos_index( index_type n ) const {
 		index_type half = index_type(nodes.size() / 2);
 		if( n < half ) {
 			return next_index( head, n );
@@ -681,16 +691,6 @@ protected:
 	}
 
 	// Modifiers
-
-	iterator insert_index( index_type index, const value_type& x ) {
-		values.push_back(x);
-		return insert_index_node( index );
-	}
-
-	iterator insert_index( index_type index, value_type&& x ) {
-		values.push_back( std::move(x) );
-		return insert_index_node( index );
-	}
 
 	iterator insert_index_node( index_type index ) {
 		index_type N = index_type(nodes.size());
@@ -779,6 +779,40 @@ protected:
 			nodes[tail].next = N;
 		}
 		tail = N;
+	}
+
+	void resize_nodes( size_type N ) {
+		
+		size_type current_size = size();
+		if( current_size <= N ) return;
+		
+		// modify previous tail and add first new node
+		if( tail == terminator ) {
+			head = 0;
+			nodes[0].prev = terminator;
+			nodes[0].next = 1;
+		} else {
+			nodes[tail].next = index_type(current_size);
+			nodes[current_size].prev = tail;
+			if( N > current_size + 1 ) {
+				nodes[current_size].next = index_type(current_size + 1);
+			} else {
+				nodes[current_size].next = terminator;
+			}
+		}
+
+		// add more new nodes
+		for( size_type i = current_size + 1; i < N-1; ++i ) {
+			nodes[i].prev = index_type(i - 1);
+			nodes[i].next = index_type(i + 1);
+		}
+
+		// add the last node and update the tail
+		if( N > current_size + 1 ) {
+			tail = index_type(N - 1);
+			nodes[tail].prev = tail - 1;
+			nodes[tail].next = terminator;
+		}
 	}
 
 	void swap_nodes( index_type left, index_type right ) {
@@ -886,13 +920,59 @@ protected:
 		return N;
 	}
 
-	// merge sorted [first,mid) with sorted [mid,last]
+	// produces sorted [first,last] from sorted [first,mid) and sorted [mid,last]
 	template<typename Comp>
 	void merge_index( index_type first, index_type mid, index_type last, Comp comp ) {
-
+		index_type last_next = next_index(last);
+		for( index_type i = first; i != mid; i = next_index(i) ) {
+			for( index_type j = mid; j != last_next; j = next_index(j) ) {
+				if( comp( values[j], values[i] ) ) {
+					swap_nodes( i, j );
+					if( mid == j )
+						mid = i;
+					std::swap( i, j );
+				} else {
+					break;
+				}
+			}
+		}
+		for( index_type i = mid; i != last_next; i = next_index(i) ) {
+			for( index_type j = next_index(i); j != last_next; j = next_index(j) ) {
+				if( comp( values[j], values[i] ) ) {
+					swap_nodes( i, j );
+					std::swap( i, j );
+				} else {
+					break;
+				}
+			}
+		}
 	}
 
-	// insertion sort -- O(N^2) compares/swaps, adaptive
+	void splice_index( index_type index, index_type left_size, index_type sum_size, index_type right_head, index_type right_tail ) {
+		// connect the two lists
+		index_type prev_pos = prev_index(index);
+		if( prev_pos == terminator ) {
+			head = right_head;
+		} else {
+			nodes[ prev_pos ].next = right_head;
+		}
+		nodes[ right_head ].prev = prev_pos;
+
+		// offset the new indexes
+		for(index_type i=left_size;i<sum_size;++i) {
+			nodes[ i ] += left_size;
+		}
+
+		// update the tail
+		if( index == terminator ) {
+			tail = right_tail;
+		} else {
+			nodes[ index ].prev = right_tail;
+		}
+		nodes[ right_tail ].next = index;
+	}
+
+	// insertion sort -- O(N^2) compares/swaps, adaptive, [first,last]
 	template<typename Comp>
 	void insertion_sort( index_type first, index_type last, Comp comp ) {
 		index_type first_prev = prev_index(first);
@@ -909,7 +989,7 @@ protected:
 		}
 	}
 
-	// selection sort -- O(N^2) compares, O(N) swaps, non-adaptive
+	// selection sort -- O(N^2) compares, O(N) swaps, non-adaptive, [first,last]
 	template<typename Comp>
 	void selection_sort( index_type first, index_type last, Comp comp ) {
 		index_type last_next = next_index(last);
@@ -927,64 +1007,30 @@ protected:
 		}
 	}
 
-	// merge sort -- fix me
+	// merge sort, [first,last]
 	template<typename Comp>
 	void merge_sort( index_type first, index_type last, size_type N, Comp comp ) {
 		if( N < 2 ) return;
 
-		index_type first_label = index_type(count(head,first) - 1);
-		index_type last_label = first_label + index_type( N-1 );
-
-		index_type M = index_type(N / 2 - 1);
-		index_type half_index = get_index( M );
-		
-		merge_sort( first, half_index, M+1, comp );
-
-		half_index = get_index( M );
-		index_type half_next = next_index(half_index);
-		
-		merge_sort( half_next, last, N-(M+1) comp );
-
-		half_next = next_index(half_index);
-		index_type last_next = next_index(last);
-
-		first = get_index( first_label );
-		last = get_index( last_label );
-		
-		for( index_type i = first; i != half_next; i = next_index(i) ) {
-			for( index_type j = half_next; j != last_next; j = next_index(j) ) {
-				if( comp( values[j], values[i] ) ) {
-					swap_nodes( i, j );
-					std::swap( i, j );
-					if( half_next == j )
-						half_next = i;
-					else if( half_next == i )
-						half_next = j;
-					if( last_next == j )
-						last_next = i;
-					else if( last_next == i )
-						last_next = j;
-				} else {
-					break;
-				}
-			}
+		if( N * sizeof(node) <= 64 ) {
+			insertion_sort(first,last,comp);
+			return;
 		}
 
-		for( index_type i = half_next; i != last_next; i = next_index(i) ) {
-			for( index_type j = next_index(i); j != last_next; j = next_index(j) ) {
-				if( comp( values[j], values[i] ) ) {
-					swap_nodes( i, j );
-					std::swap( i, j );
-					if( last_next == j )
-						last_next = i;
-					else if( last_next == i )
-						last_next = j;
-				} else {
-					break;
-				}
-			}
-		}
+		index_type first_pos = index_type( count( head, first ) - 1 );
+		index_type half_size = index_type((N-1) / 2);
+		index_type mid = next_index( first, half_size );
+		index_type mid_next = next_index( mid );
 
+		merge_sort( first, mid, half_size+1, comp );
+		merge_sort( mid_next, last, N-(half_size+1), comp );
+
+		// sorting invalidates indices. recompute them.
+		first = get_pos_index( first_pos );
+		mid_next = next_index( first, half_size + 1 );
+		last = next_index( mid_next, index_type(N - 2) - half_size );
+		
+		merge_index( first, mid_next, last, comp );
 	}
 
 	/*
@@ -1018,6 +1064,8 @@ using list32 = list<T,uint32_t>;
 
 template<typename T>
 using list64 = list<T,uint64_t>;
+
+// Algorithms
 
 // Accumulate can be implemented directly on the vector of values,
 // bypassing the linked structure entirely.
@@ -1065,17 +1113,12 @@ T2 accumulate( cw::list_const_iterator<T,U> first, cw::list_const_iterator<T,U> 
 }
 
 /*
-// These implement swap by rewiring the links, rather than swapping values.
+// Tis implements swap by rewiring the links, rather than swapping values.
 // This will invalidate any iterators pointing to the two elements,
 // which causes problems in algorithms not expecting it.
 
 template<typename T,typename U>
 void iter_swap( cw::list_iterator<T,U>& lhs, cw::list_iterator<T,U>& rhs ) {
-	lhs.iter_swap(rhs);
-}
-
-template<typename T,typename U>
-void iter_swap( cw::list_const_iterator<T,U>& lhs, cw::list_const_iterator<T,U>& rhs ) {
 	lhs.iter_swap(rhs);
 }
 */
