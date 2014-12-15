@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\cw\list.h" />
+    <ClInclude Include="..\..\..\include\cw\list_algorithm.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\test\test_list.cpp" />

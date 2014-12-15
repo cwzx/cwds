@@ -6,6 +6,7 @@
 #include <random>
 #include <list>
 #include <cw/list.h>
+#include <cw/list_algorithm.h>
 #include "logarithmic_range.h"
 
 using namespace std;
@@ -746,7 +747,7 @@ int main3() {
 }
 
 int main() {
-	//main1();
+	main1();
 	//main2();
-	main3();
+	//main3();
 }

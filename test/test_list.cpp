@@ -182,7 +182,7 @@ void test_splice() {
 void test_sort() {
 
 	using T = uint16_t;
-	size_t N = 64000;
+	size_t N = 32000;
 
 	auto c = create<cw::list<T>,fill_back_random>( N );
 	auto s = create<std::list<T>,fill_back_random>( N );

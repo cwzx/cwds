@@ -77,9 +77,11 @@ struct list_iterator_base : list_iterator_types<T,U,is_const> {
 	}
 
 	base_type& operator++() {
-		if( index == p->terminator )
-			return *this;
-		index = p->nodes[index].next;
+		if( index == p->terminator ) {
+			index = p->head;
+		} else {
+			index = p->nodes[index].next;
+		}
 		return *this;
 	}
 
@@ -687,7 +689,7 @@ protected:
 		return (&val - &values[0]) / sizeof(value_type);
 	}
 
-	node& get_value_node( const T& val ) const {
+	node& get_value_node( const T& val ) {
 		return nodes[ get_value_index(val) ];
 	}
 
@@ -1078,65 +1080,49 @@ using list32 = list<T,uint32_t>;
 template<typename T>
 using list64 = list<T,uint64_t>;
 
-// Algorithms
+// Operators
 
-// Accumulate can be implemented directly on the vector of values,
-// bypassing the linked structure entirely.
-
-template<typename T,typename U,typename T2,typename BinaryOperation>
-T2 accumulate( const cw::list<T,U>& v, T2 init, BinaryOperation op ) {
-	size_t N = v.size();
-	for(size_t i=0;i<N;++i) {
-		init = op( init, v.values[i] );
-	}
-	return init;
+template<typename T, typename U>
+bool operator==( const cw::list<T,U>& lhs, const cw::list<T,U>& rhs ) {
+	return lhs.size() == rhs.size() && std::equal( lhs.begin(), lhs.end(), rhs.begin() );
 }
 
-template<typename T,typename U,typename T2>
-T2 accumulate( const cw::list<T,U>& v, T2 init ) {
-	size_t N = v.size();
-	for(size_t i=0;i<N;++i) {
-		init += v.values[i];
-	}
-	return init;
+template<typename T, typename U>
+bool operator!=( const cw::list<T,U>& lhs, const cw::list<T,U>& rhs ) {
+	return !(lhs == rhs);
 }
+
+template<typename T, typename U>
+bool operator<( const cw::list<T,U>& lhs, const cw::list<T,U>& rhs ) {
+	return std::lexicographical_compare( lhs.begin(), lhs.end(), rhs.begin(), rhs.end() );
+}
+
+template<typename T, typename U>
+bool operator>( const cw::list<T,U>& lhs, const cw::list<T,U>& rhs ) {
+	return rhs < lhs;
+}
+
+template<typename T, typename U>
+bool operator<=( const cw::list<T,U>& lhs, const cw::list<T,U>& rhs ) {
+	return !(rhs < lhs);
+}
+
+template<typename T, typename U>
+bool operator>=( const cw::list<T,U>& lhs, const cw::list<T,U>& rhs ) {
+	return !(lhs < rhs);
+}
+
 
 }
 
 namespace std {
 
-template<typename T,typename U,typename T2,typename BinaryOperation>
-T2 accumulate( cw::list_const_iterator<T,U> first, cw::list_const_iterator<T,U> last, T2 init, BinaryOperation op ) {
-	if( first == first.p->begin() && last == last.p->end() )
-		return cw::accumulate( *first.p, init, op );
-
-	for( ; first != last; ++first )
-		init = op( init, *first );
-	return init;
+template<typename T, typename U>
+void swap( cw::list<T,U>& lhs, cw::list<T,U>& rhs ) {
+	lhs.swap(rhs);
 }
 
-template<typename T,typename U,typename T2,typename BinaryOperation>
-T2 accumulate( cw::list_const_iterator<T,U> first, cw::list_const_iterator<T,U> last, T2 init ) {
-	if( first == first.p->begin() && last == last.p->end() )
-		return cw::accumulate( *first.p, init, op );
-
-	for( ; first != last; ++first )
-		init += *first;
-	return init;
 }
-
-/*
-// Tis implements swap by rewiring the links, rather than swapping values.
-// This will effectively swap any iterators pointing to the two elements,
-// which causes problems in algorithms not expecting it.
-
-template<typename T,typename U>
-void iter_swap( cw::list_iterator<T,U>& lhs, cw::list_iterator<T,U>& rhs ) {
-	lhs.iter_swap(rhs);
-}
-*/
-}
-
 
 #if _MSC_VER <= 1800
 #undef noexcept
