@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "benchmark", "benchmark\benc
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7F066BEA-2BD0-4CD1-8B51-973DD4B7D6D3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj", "{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -23,6 +25,14 @@ Global
 		{F3510151-8E03-4286-AD3E-1D694CEF561E}.Release|Win32.Build.0 = Release|Win32
 		{F3510151-8E03-4286-AD3E-1D694CEF561E}.Release|x64.ActiveCfg = Release|x64
 		{F3510151-8E03-4286-AD3E-1D694CEF561E}.Release|x64.Build.0 = Release|x64
+		{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}.Debug|Win32.ActiveCfg = Debug|Win32
+		{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}.Debug|Win32.Build.0 = Debug|Win32
+		{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}.Debug|x64.ActiveCfg = Debug|x64
+		{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}.Debug|x64.Build.0 = Debug|x64
+		{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}.Release|Win32.ActiveCfg = Release|Win32
+		{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}.Release|Win32.Build.0 = Release|Win32
+		{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}.Release|x64.ActiveCfg = Release|x64
+		{22612CD7-5FB4-47AA-8F85-1403CD7C9D72}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

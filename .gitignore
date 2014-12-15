@@ -10,7 +10,7 @@ include/cw/multivec.h
 *.opensdf
 *.psess
 *.vsp
-build/*/cwlist/x64
-build/*/cwlist/Win32
+build/*/test/x64
+build/*/test/Win32
 build/*/benchmark/x64
 build/*/benchmark/Win32

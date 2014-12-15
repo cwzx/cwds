@@ -4,7 +4,8 @@
 #include <vector>
 #include <utility>
 #include <exception>
-#include <type_traits>
+#include <limits>
+#include <iterator>
 
 #if _MSC_VER <= 1800
 #define noexcept throw()
@@ -178,16 +179,16 @@ struct list : list_types_base<T,U> {
 	
 	list() = default;
 
-	list( const std::initializer_list<value_type>& rhs ) : values(rhs) {
-		set_default_nodes( values.size() );
+	list( const std::initializer_list<value_type>& rhs ) {
+		assign( rhs );
 	}
 
-	explicit list( const std::vector<value_type>& rhs ) : values(rhs) {
-		set_default_nodes( values.size() );
+	explicit list( const std::vector<value_type>& rhs ) {
+		assign( rhs );
 	}
 
-	explicit list( std::vector<value_type>&& rhs ) : values(std::move(rhs)) {
-		set_default_nodes( values.size() );
+	explicit list( std::vector<value_type>&& rhs ) {
+		assign( std::move( rhs ) );
 	}
 	
 	explicit list( size_type N ) {
@@ -227,20 +228,17 @@ struct list : list_types_base<T,U> {
 	}
 
 	void assign( size_type count, const T& value ) {
-		clear();
-		values.assign(count,value);
+		values.assign( count, value );
 		set_default_nodes( count );
 	}
 
 	template<typename InputIt>
 	void assign( InputIt first, InputIt last ) {
-		clear();
 		values.assign( first, last );
 		set_default_nodes( std::distance(first,last) );
 	}
 
 	void assign( const std::initializer_list<T>& rhs ) {
-		clear();
 		values.assign( rhs );
 		set_default_nodes( rhs.size() );
 	}
@@ -304,11 +302,10 @@ struct list : list_types_base<T,U> {
 	}
 
 	iterator erase( const_iterator first, const_iterator last ) {
-		iterator it = first;
-		while( it != last ) {
-			it = erase_index( it.index );
+		while( first != last ) {
+			first = erase_index( first.index );
 		}
-		return iterator(it);
+		return iterator(first);
 	}
 
 	void push_front( const value_type& x ) {
@@ -465,6 +462,9 @@ struct list : list_types_base<T,U> {
 		size_type left_size = size();
 		size_type right_size = rhs.size();
 		size_type sum_size = left_size + right_size;
+		if( sum_size > max_size() ) {
+			throw std::exception("cw::list merge -- too big for index_type");
+		}
 
 		values.reserve( sum_size );
 		std::move( std::begin(rhs.values), std::end(rhs.values), std::back_inserter(values) );
@@ -472,18 +472,19 @@ struct list : list_types_base<T,U> {
 		nodes.resize( sum_size );
 		memcpy( &nodes[left_size], &rhs.nodes[0], right_size * sizeof(node) );
 
-		// connect the two lists
-		index_type right_head = rhs.head + left_size;
+		// offset the new indexes
+		for(size_type i=left_size;i<sum_size;++i) {
+			nodes[ i ].prev += index_type(left_size);
+			nodes[ i ].next += index_type(left_size);
+		}
+
+		// connect the head
+		index_type right_head = rhs.head + index_type(left_size);
 		nodes[ tail ].next = right_head;
 		nodes[ right_head ].prev = tail;
 
-		// offset the new indexes
-		for(index_type i=left_size;i<sum_size;++i) {
-			nodes[ i ] += left_size;
-		}
-
-		// update the tail
-		index_type right_tail = rhs.tail + left_size;
+		// connect the tail
+		index_type right_tail = rhs.tail + index_type(left_size);
 		tail = right_tail;
 		nodes[ right_tail ].next = terminator;
 
@@ -536,6 +537,9 @@ struct list : list_types_base<T,U> {
 		size_type left_size = size();
 		size_type right_size = rhs.size();
 		size_type sum_size = left_size + right_size;
+		if( sum_size > max_size() ) {
+			throw std::exception("cw::list splice -- too big for index_type");
+		}
 
 		values.reserve( sum_size );
 		std::move( std::begin(rhs.values), std::end(rhs.values), std::back_inserter(values) );
@@ -543,10 +547,10 @@ struct list : list_types_base<T,U> {
 		nodes.resize( sum_size );
 		memcpy( &nodes[left_size], &rhs.nodes[0], right_size * sizeof(node) );
 
-		index_type right_head = rhs.head + left_size;
-		index_type right_tail = rhs.tail + left_size;
+		index_type right_head = rhs.head + index_type(left_size);
+		index_type right_tail = rhs.tail + index_type(left_size);
 
-		splice_index( pos.index, left_size, sum_size, right_head, right_tail );
+		splice_index( pos.index, index_type(left_size), index_type(sum_size), right_head, right_tail );
 	}
 
 	void splice( const_iterator pos, list_type& rhs, const_iterator it ) {
@@ -556,6 +560,9 @@ struct list : list_types_base<T,U> {
 
 	void splice( const_iterator pos, list_type&& rhs, const_iterator it ) {
 		size_type left_size = size();
+		if( left_size + 1 > max_size() ) {
+			throw std::exception("cw::list splice -- too big for index_type");
+		}
 
 		values.emplace_back( std::move(*it) );
 		
@@ -582,8 +589,11 @@ struct list : list_types_base<T,U> {
 
 	void splice( const_iterator pos, list_type&&, const_iterator first, const_iterator last ) {
 		size_type left_size = size();
-		size_type right_size = std::distance( first, last ) + 1;
+		size_type right_size = std::distance( first, last );
 		size_type sum_size = left_size + right_size;
+		if( sum_size > max_size() ) {
+			throw std::exception("cw::list splice -- too big for index_type");
+		}
 
 		reserve( sum_size );
 		std::move( first, last, std::back_inserter(*this) );
@@ -611,8 +621,8 @@ struct list : list_types_base<T,U> {
 	void sort( Comp comp ) {
 		size_type N = nodes.size();
 		if( N < 2 ) return;
-		merge_sort(head,tail,N,comp);
-		//insertion_sort(head,tail,comp);
+		//merge_sort(head,tail,N,comp);
+		insertion_sort(head,tail,comp);
 		//selection_sort(head,tail,comp);
 	}
 
@@ -948,9 +958,17 @@ protected:
 		}
 	}
 
+	// splice [right_head,right_tail] into [head,right_head) at index
 	void splice_index( index_type index, index_type left_size, index_type sum_size, index_type right_head, index_type right_tail ) {
-		// connect the two lists
 		index_type prev_pos = prev_index(index);
+		
+		// offset the new indexes
+		for(index_type i=left_size;i<sum_size;++i) {
+			nodes[ i ].prev += left_size;
+			nodes[ i ].next += left_size;
+		}
+		
+		// connect the head
 		if( prev_pos == terminator ) {
 			head = right_head;
 		} else {
@@ -958,12 +976,7 @@ protected:
 		}
 		nodes[ right_head ].prev = prev_pos;
 
-		// offset the new indexes
-		for(index_type i=left_size;i<sum_size;++i) {
-			nodes[ i ] += left_size;
-		}
-
-		// update the tail
+		// connect the tail
 		if( index == terminator ) {
 			tail = right_tail;
 		} else {
@@ -1007,7 +1020,7 @@ protected:
 		}
 	}
 
-	// merge sort, [first,last]
+	// merge sort, [first,last] -- fix me
 	template<typename Comp>
 	void merge_sort( index_type first, index_type last, size_type N, Comp comp ) {
 		if( N < 2 ) return;
@@ -1114,7 +1127,7 @@ T2 accumulate( cw::list_const_iterator<T,U> first, cw::list_const_iterator<T,U> 
 
 /*
 // Tis implements swap by rewiring the links, rather than swapping values.
-// This will invalidate any iterators pointing to the two elements,
+// This will effectively swap any iterators pointing to the two elements,
 // which causes problems in algorithms not expecting it.
 
 template<typename T,typename U>

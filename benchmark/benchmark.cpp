@@ -1,11 +1,10 @@
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <numeric>
-#include <list>
 #include <chrono>
-#include <fstream>
-#include <iostream>
 #include <random>
+#include <list>
 #include <cw/list.h>
 #include "logarithmic_range.h"
 
@@ -293,24 +292,6 @@ void test_random( vector<double>& times, size_t N ) {
 	times.push_back( time([&]{
 		v = create<L,fill_random_sorted,P>(N);
 	}) * scale );
-}
-
-template<typename L1,typename L2>
-void test_compare( const L1& v1, const L2& v2 ) {
-
-	auto it1 = begin(v1);
-	auto it2 = begin(v2);
-
-	auto e1 = end(v1);
-	auto e2 = end(v2);
-
-	while( it1 != e1 && it2 != e2 ) {
-		if( *it1 != *it2 )
-			cout << *it1 << " != " << *it2 << endl;
-		++it1; ++it2;
-	}
-
-	cout << "Done" << endl;
 }
 
 template<typename T,typename U,typename P>
@@ -766,6 +747,6 @@ int main3() {
 
 int main() {
 	//main1();
-	main2();
-	//main3();
+	//main2();
+	main3();
 }

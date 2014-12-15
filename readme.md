@@ -7,6 +7,8 @@ The list is fully-featured with the same interface as `std::list` and can be use
 
 The source code is in [`include/cw/list.h`](/include/cw/list.h).
 
+More adventures in data structures may appear here in the future.
+
 Usage
 -----
 
@@ -56,7 +58,7 @@ Interface Differences
 * `.erase()` invalidates iterators to the erased element and the element stored at the back of the underlying vector.
 * `.merge()` does allocation and move.
 * `.splice()` does allocation and move.
-* `.swap()` invalidates all iterators.
+* `.swap()` invalidates all iterators to both lists.
 
 Benchmark
 ---------
