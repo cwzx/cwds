@@ -22,6 +22,7 @@
     <ClInclude Include="..\..\..\benchmark\chrono.h" />
     <ClInclude Include="..\..\..\benchmark\logarithmic_range.h" />
     <ClInclude Include="..\..\..\include\cw\list.h" />
+    <ClInclude Include="..\..\..\include\cw\list_algorithm.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\benchmark\benchmark.cpp" />
