@@ -105,7 +105,7 @@ struct fill_mid {
 	}
 };
 
-// Random -- random values inserted at the back.
+// Back Random -- random values inserted at the back.
 
 struct fill_back_random {
 	mt19937 mt;
@@ -121,6 +121,24 @@ struct fill_back_random {
 	}
 };
 
+// FB Random -- front/back chosen at random.
+
+struct fill_fb_random {
+	mt19937 mt;
+	template<typename L>
+	void operator()( L& v, size_t N ) {
+		using T = L::value_type;
+		bernoulli_distribution dist;
+		for(size_t i=0;i<N;++i) {
+			auto r = dist(mt);
+			if( r )
+				v.emplace_front( T(i) );
+			else
+				v.emplace_back( T(i) );
+		}
+	}
+};
+
 // Random Sorted -- insert random values, keeping list sorted.
 
 struct fill_random_sorted {
@@ -132,7 +150,7 @@ struct fill_random_sorted {
 		uniform_int_distribution<uint32_t> dist( 0, upper );
 		for(size_t i=0;i<N;++i) {
 			auto r = dist(mt);
-			v.insert( find_if( begin(v), end(v), [=]( auto x ){ return uint32_t(x) > r; } ), T(r) );
+			v.insert( lower_bound( begin(v), end(v), T(r) ), T(r) );
 		}
 	}
 };
@@ -149,11 +167,9 @@ double time( F&& f ) {
 template<typename L>
 double test_accumulate( const L& v, int N = 1 ) {
 	return time( [&]{
-		uint64_t total = 0;
 		for(int i=0;i<N;++i) {
-			total += accumulate( begin(v), end(v), uint64_t(0) );
+			volatile auto dont_optimize_me = accumulate( begin(v), end(v), uint64_t(0) );
 		}
-		volatile uint64_t x = total;
 	});
 }
 
@@ -169,16 +185,16 @@ double test_adjacent_difference( const L& v, int N = 1 ) {
 }
 
 template<typename L>
-double test_count( const L& v, int N = 1 ) {
+double test_traversal( const L& v, int N = 1 ) {
 	return time( [&]{
-		uint64_t count = 0;
 		auto e = end(v);
 		for(int i=0;i<N;++i) {
-			for(auto it = begin(v);it!=e;++it) {
+			uint64_t count = 0;
+			for( auto it = begin(v); it != e; ++it ) {
 				++count;
 			}
+			volatile uint64_t dont_optimize_me = count;
 		}
-		volatile uint64_t x = count;
 	});
 }
 
@@ -219,9 +235,10 @@ void test_vec( vector<double>& times, size_t N, int repeat ) {
 	L v;
 	double factor = scale / repeat;
 	times.push_back( time([&]{
-		v = create<L,fill_back,P>( N);
+		v = create<L,fill_back,P>(N);
 	}) * scale );
 	times.push_back( test_accumulate( v, repeat ) * factor );
+	times.push_back( test_adjacent_difference( v, repeat ) * factor );
 }
 
 template<typename L,typename P>
@@ -229,32 +246,26 @@ void test_list( vector<double>& times, size_t N, int repeat ) {
 	L v;
 	double factor = scale / repeat;
 	times.push_back( time([&]{
-		v = create<L,fill_front,P>(N);
-	}) * scale );
-	times.push_back( test_accumulate( v, repeat ) * factor );
-	times.push_back( test_adjacent_difference( v, repeat ) * factor );
-	times.push_back( test_count( v, repeat ) * factor );
-
-	times.push_back( time([&]{
 		v = create<L,fill_back,P>(N);
 	}) * scale );
 	times.push_back( test_accumulate( v, repeat ) * factor );
 	times.push_back( test_adjacent_difference( v, repeat ) * factor );
-	times.push_back( test_count( v, repeat ) * factor );
-
-	times.push_back( time([&]{
-		v = create<L,fill_alt,P>(N);
-	}) * scale );
-	times.push_back( test_accumulate( v, repeat ) * factor );
-	times.push_back( test_adjacent_difference( v, repeat ) * factor );
-	times.push_back( test_count( v, repeat ) * factor );
+	times.push_back( test_traversal( v, repeat ) * factor );
 
 	times.push_back( time([&]{
 		v = create<L,fill_mid,P>(N);
 	}) * scale );
 	times.push_back( test_accumulate( v, repeat ) * factor );
 	times.push_back( test_adjacent_difference( v, repeat ) * factor );
-	times.push_back( test_count( v, repeat ) * factor );
+	times.push_back( test_traversal( v, repeat ) * factor );
+
+	times.push_back( time([&]{
+		v = create<L,fill_fb_random,P>(N);
+	}) * scale );
+	times.push_back( test_accumulate( v, repeat ) * factor );
+	times.push_back( test_adjacent_difference( v, repeat ) * factor );
+	times.push_back( test_traversal( v, repeat ) * factor );
+
 }
 
 template<typename L,typename P>
@@ -320,13 +331,14 @@ void benchmark( ofstream& out ) {
 		out << i << "," << repeat << ",";
 		for( auto t : times )
 			out << t << ",";
-		int start = 2;
-		int nTests = 16;
+		int start = 3;
+		int nTests = 12;
 		for(int j=0;j<nTests;++j)
 			out << times[start + j] / times[start + nTests + j] << ",";
 
-		out << times[0] / times[start + nTests + 4] << ",";
-		out << times[1] / times[start + nTests + 5] << ",";
+		for(int j=0;j<start;++j)
+			out << times[start + nTests + j] / times[j] << ",";
+
 		out << endl;
 	}
 
@@ -357,6 +369,7 @@ void benchmark_sorting( ofstream& out ) {
 		int nTests = 8;
 		for(int j=0;j<nTests;++j)
 			out << times[start + j] / times[start + nTests + j] << ",";
+
 		out << endl;
 	}
 
@@ -368,7 +381,7 @@ void benchmark_random( ofstream& out ) {
 	size_t bits = sizeof(U) * 8;
 	size_t minN = ( bits > 8 ) ? ( 1 << (bits / 2) ) : 1;
 	size_t maxBytes = 1 << 17;
-	maxN = min( maxN, maxBytes / (size_t)sqrt( 2 * sizeof(void*) + sizeof(T) ) );
+	maxN = min( maxN, maxBytes / ( 2 * sizeof(void*) + (size_t)sqrt( 0.75 * sizeof(T) ) ) );
 
 	size_t maxIts = 1000;
 
@@ -400,16 +413,9 @@ void print_header( ofstream& out ) {
 
 		   "create_back vector,"
 		   "accumulate,"
+		   "adjacent_difference,"
 
-		   "create_front stdlist,"
-		   "accumulate,"
-		   "adjacent_difference,"
-		   "traversal,"
 		   "create_back stdlist,"
-		   "accumulate,"
-		   "adjacent_difference,"
-		   "traversal,"
-		   "create_alt stdlist,"
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
@@ -417,16 +423,12 @@ void print_header( ofstream& out ) {
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
+		   "create_fb stdlist,"
+		   "accumulate,"
+		   "adjacent_difference,"
+		   "traversal,"
 
-		   "create_front cwlist,"
-		   "accumulate,"
-		   "adjacent_difference,"
-		   "traversal,"
 		   "create_back cwlist,"
-		   "accumulate,"
-		   "adjacent_difference,"
-		   "traversal,"
-		   "create_alt cwlist,"
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
@@ -434,16 +436,12 @@ void print_header( ofstream& out ) {
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
+		   "create_fb cwlist,"
+		   "accumulate,"
+		   "adjacent_difference,"
+		   "traversal,"
 
-		   "create_front ratio,"
-		   "accumulate ratio,"
-		   "adjacent_difference ratio,"
-		   "traversal ratio,"
 		   "create_back ratio,"
-		   "accumulate ratio,"
-		   "adjacent_difference ratio,"
-		   "traversal ratio,"
-		   "create_alt ratio,"
 		   "accumulate ratio,"
 		   "adjacent_difference ratio,"
 		   "traversal ratio,"
@@ -451,9 +449,14 @@ void print_header( ofstream& out ) {
 		   "accumulate ratio,"
 		   "adjacent_difference ratio,"
 		   "traversal ratio,"
+		   "create_fb ratio,"
+		   "accumulate ratio,"
+		   "adjacent_difference ratio,"
+		   "traversal ratio,"
 
-		   "vec back ratio,"
-		   "vec accum ratio,"
+		   "create_back vec ratio,"
+		   "accumulate vec ratio,"
+		   "adjacent_difference vec ratio,"
 	<< endl;
 }
 
@@ -749,5 +752,5 @@ int main3() {
 int main() {
 	main1();
 	//main2();
-	//main3();
+	main3();
 }
