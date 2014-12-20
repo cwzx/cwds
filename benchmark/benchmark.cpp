@@ -19,8 +19,6 @@ using hrc = cw::high_resolution_clock;
 using hrc = std::chrono::high_resolution_clock;
 #endif
 
-static const double scale = 1.0e6;
-
 // Preallocate strategy
 
 struct preallocate_enable {
@@ -233,6 +231,7 @@ namespace std {
 template<typename L,typename P>
 void test_vec( vector<double>& times, size_t N, int repeat ) {
 	L v;
+	double scale = 1.0e6;
 	double factor = scale / repeat;
 	times.push_back( time([&]{
 		v = create<L,fill_back,P>(N);
@@ -244,6 +243,7 @@ void test_vec( vector<double>& times, size_t N, int repeat ) {
 template<typename L,typename P>
 void test_list( vector<double>& times, size_t N, int repeat ) {
 	L v;
+	double scale = 1.0e6;
 	double factor = scale / repeat;
 	times.push_back( time([&]{
 		v = create<L,fill_back,P>(N);
@@ -271,7 +271,7 @@ void test_list( vector<double>& times, size_t N, int repeat ) {
 template<typename L,typename P>
 void test_sorting( vector<double>& times, size_t N ) {
 	L v;
-
+	double scale = 1.0e3;
 	v = create<L,fill_front,P>(N);
 	times.push_back( test_sort( v ) * scale );
 	
@@ -300,7 +300,7 @@ void test_sorting( vector<double>& times, size_t N ) {
 template<typename L,typename P>
 void test_random( vector<double>& times, size_t N ) {
 	L v;
-
+	double scale = 1.0e3;
 	times.push_back( time([&]{
 		v = create<L,fill_random_sorted,P>(N);
 	}) * scale );
@@ -380,8 +380,8 @@ void benchmark_random( ofstream& out ) {
 	size_t maxN = numeric_limits<U>::max();
 	size_t bits = sizeof(U) * 8;
 	size_t minN = ( bits > 8 ) ? ( 1 << (bits / 2) ) : 1;
-	size_t maxBytes = 1 << 17;
-	maxN = min( maxN, maxBytes / ( 2 * sizeof(void*) + (size_t)sqrt( 0.75 * sizeof(T) ) ) );
+	size_t maxBytes = 1 << 20;
+	maxN = min( maxN, maxBytes / ( 2 * sizeof(void*) + (size_t)sqrt( 0.6 * sizeof(T) ) ) );
 
 	size_t maxIts = 1000;
 
@@ -399,8 +399,8 @@ void benchmark_random( ofstream& out ) {
 			out << t << ",";
 
 		out << times[1] / times[2] << ",";
-		out << times[1] / times[0] << ",";
-		out << times[2] / times[0] << ",";
+		out << times[0] / times[1] << ",";
+		out << times[0] / times[2] << ",";
 
 		out << endl;
 	}
@@ -750,7 +750,7 @@ int main3() {
 }
 
 int main() {
-	main1();
+	//main1();
 	//main2();
 	main3();
 }
