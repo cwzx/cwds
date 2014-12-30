@@ -205,20 +205,6 @@ double test_reverse( L& v, int N = 1 ) {
 	});
 }
 
-template<typename L>
-double test_sort( L& v ) {
-	return time( [&]{
-		stable_sort( begin(v), end(v) );
-	});
-}
-
-template<typename L>
-double test_list_sort( L& v ) {
-	return time( [&]{
-		v.sort();
-	});
-}
-
 template<typename T,int N = 1>
 struct data_array {
 	T b[N];
@@ -281,35 +267,6 @@ void test_list( vector<double>& times, size_t N, int repeat ) {
 }
 
 template<typename L,typename P>
-void test_sorting( vector<double>& times, size_t N ) {
-	L v;
-	double scale = 1.0e3;
-	v = create<L,fill_front,P>(N);
-	times.push_back( test_sort( v ) * scale );
-	
-	v = create<L,fill_front,P>(N);
-	times.push_back( test_list_sort( v ) * scale );
-
-	v = create<L,fill_back,P>(N);
-	times.push_back( test_sort( v ) * scale );
-	
-	v = create<L,fill_back,P>(N);
-	times.push_back( test_list_sort( v ) * scale );
-	
-	v = create<L,fill_alt,P>(N);
-	times.push_back( test_sort( v ) * scale );
-	
-	v = create<L,fill_alt,P>(N);
-	times.push_back( test_list_sort( v ) * scale );
-	
-	v = create<L,fill_mid,P>(N);
-	times.push_back( test_sort( v ) * scale );
-	
-	v = create<L,fill_mid,P>(N);
-	times.push_back( test_list_sort( v ) * scale );
-}
-
-template<typename L,typename P>
 void test_random( vector<double>& times, size_t N ) {
 	L v;
 	double scale = 1.0e3;
@@ -350,37 +307,6 @@ void benchmark( ofstream& out ) {
 
 		for(int j=0;j<start;++j)
 			out << times[start + nTests + j] / times[j] << ",";
-
-		out << endl;
-	}
-
-}
-
-template<typename T,typename U,typename P>
-void benchmark_sorting( ofstream& out ) {
-	size_t maxN = numeric_limits<U>::max();
-	size_t bits = sizeof(U) * 8;
-	size_t minN = ( bits > 8 ) ? ( 1 << (bits / 2) ) : 1;
-	size_t maxBytes = 1 << 17;
-	maxN = min( maxN, maxBytes / ( 2 * sizeof(void*) + sizeof(T) ) );
-
-	size_t maxIts = 1000;
-
-	vector<double> times;
-	times.reserve(100);
-
-	for( auto i : log_range( minN, maxN, maxIts, size_t(1) ) ) {
-		times.clear();
-		cout << i << endl;
-		test_sorting<std::list<T>,P>( times, i );
-		test_sorting<cw::list<T,U>,P>( times, i );
-		out << i << ",";
-		for( auto t : times )
-			out << t << ",";
-		int start = 0;
-		int nTests = 8;
-		for(int j=0;j<nTests;++j)
-			out << times[start + j] / times[start + nTests + j] << ",";
 
 		out << endl;
 	}
@@ -590,84 +516,6 @@ int main2() {
 
 	using P = preallocate_enable;
 	{
-		ofstream out("output/is1.csv");
-
-		using T = uint8_t;
-
-		benchmark_sorting<T,uint8_t,P>( out );
-		benchmark_sorting<T,uint16_t,P>( out );
-	}
-
-	{
-		ofstream out("output/is2.csv");
-
-		using T = uint16_t;
-
-		benchmark_sorting<T,uint8_t,P>( out );
-		benchmark_sorting<T,uint16_t,P>( out );
-	}
-
-	{
-		ofstream out("output/is4.csv");
-
-		using T = uint32_t;
-
-		benchmark_sorting<T,uint8_t,P>( out );
-		benchmark_sorting<T,uint16_t,P>( out );
-	}
-
-	{
-		ofstream out("output/is8.csv");
-
-		using T = uint64_t;
-
-		benchmark_sorting<T,uint8_t,P>( out );
-		benchmark_sorting<T,uint16_t,P>( out );
-	}
-
-	{
-		ofstream out("output/is16.csv");
-
-		using T = data_array<uint64_t,2>;
-
-		benchmark_sorting<T,uint8_t,P>( out );
-		benchmark_sorting<T,uint16_t,P>( out );
-	}
-
-	{
-		ofstream out("output/is32.csv");
-
-		using T = data_array<uint64_t,4>;
-
-		benchmark_sorting<T,uint8_t,P>( out );
-		benchmark_sorting<T,uint16_t,P>( out );
-	}
-
-	{
-		ofstream out("output/is64.csv");
-
-		using T = data_array<uint64_t,8>;
-
-		benchmark_sorting<T,uint8_t,P>( out );
-		benchmark_sorting<T,uint16_t,P>( out );
-	}
-
-	{
-		ofstream out("output/is128.csv");
-
-		using T = data_array<uint64_t,16>;
-
-		benchmark_sorting<T,uint8_t,P>( out );
-		benchmark_sorting<T,uint16_t,P>( out );
-	}
-
-	return 0;
-}
-
-int main3() {
-
-	using P = preallocate_enable;
-	{
 		ofstream out("output/random1.csv");
 
 		using T = uint8_t;
@@ -772,6 +620,5 @@ int main3() {
 
 int main() {
 	main1();
-	//main2();
-	//main3();
+	main2();
 }
