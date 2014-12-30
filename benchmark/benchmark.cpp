@@ -123,10 +123,10 @@ struct fill_back_random {
 
 struct fill_fb_random {
 	mt19937 mt;
+	bernoulli_distribution dist;
 	template<typename L>
 	void operator()( L& v, size_t N ) {
 		using T = L::value_type;
-		bernoulli_distribution dist;
 		for(size_t i=0;i<N;++i) {
 			auto r = dist(mt);
 			if( r )
@@ -197,6 +197,15 @@ double test_traversal( const L& v, int N = 1 ) {
 }
 
 template<typename L>
+double test_reverse( L& v, int N = 1 ) {
+	return time( [&]{
+		for(int i=0;i<N;++i) {
+			v.reverse();
+		}
+	});
+}
+
+template<typename L>
 double test_sort( L& v ) {
 	return time( [&]{
 		stable_sort( begin(v), end(v) );
@@ -251,6 +260,7 @@ void test_list( vector<double>& times, size_t N, int repeat ) {
 	times.push_back( test_accumulate( v, repeat ) * factor );
 	times.push_back( test_adjacent_difference( v, repeat ) * factor );
 	times.push_back( test_traversal( v, repeat ) * factor );
+	times.push_back( test_reverse( v, repeat ) * factor );
 
 	times.push_back( time([&]{
 		v = create<L,fill_mid,P>(N);
@@ -258,6 +268,7 @@ void test_list( vector<double>& times, size_t N, int repeat ) {
 	times.push_back( test_accumulate( v, repeat ) * factor );
 	times.push_back( test_adjacent_difference( v, repeat ) * factor );
 	times.push_back( test_traversal( v, repeat ) * factor );
+	times.push_back( test_reverse( v, repeat ) * factor );
 
 	times.push_back( time([&]{
 		v = create<L,fill_fb_random,P>(N);
@@ -265,6 +276,7 @@ void test_list( vector<double>& times, size_t N, int repeat ) {
 	times.push_back( test_accumulate( v, repeat ) * factor );
 	times.push_back( test_adjacent_difference( v, repeat ) * factor );
 	times.push_back( test_traversal( v, repeat ) * factor );
+	times.push_back( test_reverse( v, repeat ) * factor );
 
 }
 
@@ -332,7 +344,7 @@ void benchmark( ofstream& out ) {
 		for( auto t : times )
 			out << t << ",";
 		int start = 3;
-		int nTests = 12;
+		int nTests = 15;
 		for(int j=0;j<nTests;++j)
 			out << times[start + j] / times[start + nTests + j] << ",";
 
@@ -419,40 +431,49 @@ void print_header( ofstream& out ) {
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
+		   "reverse,"
 		   "create_mid stdlist,"
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
+		   "reverse,"
 		   "create_fb stdlist,"
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
+		   "reverse,"
 
 		   "create_back cwlist,"
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
+		   "reverse,"
 		   "create_mid cwlist,"
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
+		   "reverse,"
 		   "create_fb cwlist,"
 		   "accumulate,"
 		   "adjacent_difference,"
 		   "traversal,"
+		   "reverse,"
 
 		   "create_back ratio,"
 		   "accumulate ratio,"
 		   "adjacent_difference ratio,"
 		   "traversal ratio,"
+		   "reverse ratio,"
 		   "create_mid ratio,"
 		   "accumulate ratio,"
 		   "adjacent_difference ratio,"
 		   "traversal ratio,"
+		   "reverse ratio,"
 		   "create_fb ratio,"
 		   "accumulate ratio,"
 		   "adjacent_difference ratio,"
 		   "traversal ratio,"
+		   "reverse ratio,"
 
 		   "create_back vec ratio,"
 		   "accumulate vec ratio,"
@@ -750,7 +771,7 @@ int main3() {
 }
 
 int main() {
-	//main1();
+	main1();
 	//main2();
-	main3();
+	//main3();
 }

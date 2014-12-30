@@ -1048,24 +1048,6 @@ protected:
 		merge_index( first, mid_next, last, comp );
 	}
 
-	/*
-	// shell sort
-	template<typename Comp>
-	void shell_sort( index_type first, index_type last, Comp comp ) {
-		size_type N = count(first,last);
-		size_type h = 1;
-		while( h < N )
-			h = 3*h + 1;
-		while( h > 0 ) {
-			h = h / 3;
-			index_type h_index = get_index(index_type(h));
-			index_type h_next = next_index(h_index);
-			for( index_type k = first; k != h_next; k = next_index(k) )
-				insertion_sort( k, index_type(h), last, comp )
-		}
-
-	}
-	*/
 };
 
 template<typename T>

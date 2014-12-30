@@ -8,8 +8,8 @@ namespace cw {
 // Algorithms can be implemented directly on the vector of values,
 // bypassing the linked structure entirely.
 
-template<typename T,typename U,typename T2,typename BinaryOperation>
-T2 accumulate( const cw::list<T,U>& v, T2 init, BinaryOperation op ) {
+template<typename T,typename U,typename T2,typename BinaryOp>
+T2 accumulate( const cw::list<T,U>& v, T2 init, BinaryOp op ) {
 	return std::accumulate( v.values.begin(), v.values.end(), init, op );
 }
 
@@ -61,26 +61,6 @@ void replace_if( const cw::list<T,U>& v, Pred pred, const T2& new_val ) {
 }
 
 namespace std {
-
-template<typename T,typename U,typename T2,typename BinaryOperation>
-T2 accumulate( cw::list_const_iterator<T,U> first, cw::list_const_iterator<T,U> last, T2 init, BinaryOperation op ) {
-	if( first == first.p->begin() && last == last.p->end() )
-		return cw::accumulate( *first.p, init, op );
-	
-	for( ; first != last; ++first )
-		init = op( init, *first );
-	return init;
-}
-
-template<typename T,typename U,typename T2>
-T2 accumulate( cw::list_const_iterator<T,U> first, cw::list_const_iterator<T,U> last, T2 init ) {
-	if( first == first.p->begin() && last == last.p->end() )
-		return cw::accumulate( *first.p, init );
-
-	for( ; first != last; ++first )
-		init += *first;
-	return init;
-}
 
 /*
 // This implements swap by rewiring the links, rather than swapping values.
