@@ -471,8 +471,8 @@ struct list : list_types_base<T,U> {
 		values.reserve( sum_size );
 		std::move( std::begin(rhs.values), std::end(rhs.values), std::back_inserter(values) );
 
-		nodes.resize( sum_size );
-		memcpy( &nodes[left_size], &rhs.nodes[0], right_size * sizeof(node) );
+		nodes.reserve( sum_size );
+		std::move( std::begin(rhs.nodes), std::end(rhs.nodes), std::back_inserter(nodes) );
 
 		// offset the new indexes
 		for(size_type i=left_size;i<sum_size;++i) {
@@ -546,8 +546,8 @@ struct list : list_types_base<T,U> {
 		values.reserve( sum_size );
 		std::move( std::begin(rhs.values), std::end(rhs.values), std::back_inserter(values) );
 
-		nodes.resize( sum_size );
-		memcpy( &nodes[left_size], &rhs.nodes[0], right_size * sizeof(node) );
+		nodes.reserve( sum_size );
+		std::move( std::begin(rhs.nodes), std::end(rhs.nodes), std::back_inserter(nodes) );
 
 		index_type right_head = rhs.head + index_type(left_size);
 		index_type right_tail = rhs.tail + index_type(left_size);
