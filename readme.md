@@ -33,7 +33,7 @@ The list takes two template type arguments:
 
 The choice of index type limits the maximum size of the list.
 
-The default index type is `uint16_t`, giving a max size of 65535.
+The default index type is `uint32_t`, giving a max size of 4 294 967 295.
 
 The following convenience typedefs are provided:
 

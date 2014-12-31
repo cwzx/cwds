@@ -146,8 +146,8 @@ void test_merge() {
 	using T = uint16_t;
 	size_t N = 16000;
 
-	auto c1 = create<cw::list<T>,fill_back>( N );
-	auto c2 = create<cw::list<T>,fill_random_sorted>( N );
+	auto c1 = create<cw::list16<T>,fill_back>( N );
+	auto c2 = create<cw::list16<T>,fill_random_sorted>( N );
 	auto s1 = create<std::list<T>,fill_back>( N );
 	auto s2 = create<std::list<T>,fill_random_sorted>( N );
 
@@ -165,8 +165,8 @@ void test_splice() {
 	using T = uint16_t;
 	size_t N = 20000;
 
-	auto c1 = create<cw::list<T>,fill_back>( N );
-	auto c2 = create<cw::list<T>,fill_random_sorted>( N );
+	auto c1 = create<cw::list16<T>,fill_back>( N );
+	auto c2 = create<cw::list16<T>,fill_random_sorted>( N );
 	auto s1 = create<std::list<T>,fill_back>( N );
 	auto s2 = create<std::list<T>,fill_random_sorted>( N );
 
@@ -184,7 +184,7 @@ void test_sort() {
 	using T = uint16_t;
 	size_t N = 32000;
 
-	auto c = create<cw::list<T>,fill_back_random>( N );
+	auto c = create<cw::list16<T>,fill_back_random>( N );
 	auto s = create<std::list<T>,fill_back_random>( N );
 
 	c.sort();

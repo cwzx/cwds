@@ -155,7 +155,7 @@ struct list_iterator : list_iterator_base<T,U,false> {
 	friend list_const_iterator<T,U>;
 };
 
-template<typename T,typename U = uint16_t>
+template<typename T,typename U = uint32_t>
 struct list : list_types_base<T,U> {
 	using reference              = T&;
 	using const_reference        = const T&;
